@@ -1,0 +1,25 @@
+"0","library(reactable)"
+"0","library(dplyr)"
+"0","library(lubridate)"
+"0","library(data.table)"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"2","data.table 1.15.4 using 14 threads (see ?getDTthreads).  "
+"2","Latest news: r-datatable.com
+"
+"2","
+Attaching package: ‘data.table’
+
+"
+"2","The following objects are masked from ‘package:lubridate’:
+
+    hour, isoweek, mday, minute, month, quarter, second, wday, week, yday, year
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+"
