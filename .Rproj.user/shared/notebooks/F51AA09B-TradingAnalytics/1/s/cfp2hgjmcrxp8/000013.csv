@@ -1,4 +1,4 @@
-"0","install.packages(""data.table"")"
+"0","install.packages(""quantmod"")"
 "2","WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
 
 https://cran.rstudio.com/bin/windows/Rtools/
@@ -6,15 +6,58 @@ https://cran.rstudio.com/bin/windows/Rtools/
 "2","Installing package into ‘C:/Users/SUPERUSER/AppData/Local/R/win-library/4.3’
 (as ‘lib’ is unspecified)
 "
-"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/data.table_1.15.4.zip'
-"
-"2","Content type 'application/zip'"
-"2"," length 2387581 bytes (2.3 MB)
-"
-"2","downloaded 2.3 MB
+"2","also installing the dependencies ‘xts’, ‘zoo’, ‘TTR’, ‘curl’
 
 "
-"1","package ‘data.table’ successfully unpacked and MD5 sums checked
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/xts_0.13.2.zip'
+"
+"2","Content type 'application/zip'"
+"2"," length 851660 bytes (831 KB)
+"
+"2","downloaded 831 KB
+
+"
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/zoo_1.8-12.zip'
+"
+"2","Content type 'application/zip'"
+"2"," length 1020396 bytes (996 KB)
+"
+"2","downloaded 996 KB
+
+"
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/TTR_0.24.4.zip'
+"
+"2","Content type 'application/zip'"
+"2"," length 525559 bytes (513 KB)
+"
+"2","downloaded 513 KB
+
+"
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/curl_5.2.1.zip'
+"
+"2","Content type 'application/zip'"
+"2"," length 3218079 bytes (3.1 MB)
+"
+"2","downloaded 3.1 MB
+
+"
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/quantmod_0.4.26.zip'
+"
+"2","Content type 'application/zip'"
+"2"," length 1050998 bytes (1.0 MB)
+"
+"2","downloaded 1.0 MB
+
+"
+"1","package ‘xts’ successfully unpacked and MD5 sums checked
+"
+"1","package ‘zoo’ successfully unpacked and MD5 sums checked
+"
+"1","package ‘TTR’ successfully unpacked and MD5 sums checked
+"
+"1","package ‘curl’ successfully unpacked and MD5 sums checked
+"
+"1","package ‘quantmod’ successfully unpacked and MD5 sums checked
 "
 "1","
 "
