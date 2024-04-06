@@ -14,6 +14,7 @@ library(reactable)
 library(dplyr)
 library(lubridate)
 library(data.table)
+library(quantmod)
 ```
 
 ```{r setup, include=FALSE}
@@ -27,7 +28,7 @@ rawFidelityData <- read.csv("C:/Users/SUPERUSER/Desktop/Realized_Gain_Loss_Accou
 removeWashSales <- subset(rawFidelityData, !grepl("Wash Sale", rawFidelityData$Date.Sold, ignore.case = TRUE))
 
 ## Remove random column formatting.. dollar signs, etc.
-removeFormatting <- removeWashSales %>%
+cleanedData <- removeWashSales %>%
   mutate(Symbol = gsub("\\(.*?\\)", "", Symbol.CUSIP.))%>%
   mutate(
     Cost.Basis = gsub("\\$", "", Cost.Basis, ),
@@ -39,14 +40,13 @@ removeFormatting <- removeWashSales %>%
     Date.Acquired = as.Date(Date.Acquired, format = "%m/%d/%Y"),
     Date.Sold = as.Date(Date.Sold, format = "%m/%d/%Y")
   ) %>% 
-  select(-Symbol.CUSIP., -Security.Description, -Long.Term.Gain.Loss)
+  select(Symbol, everything(), -Symbol.CUSIP., -Security.Description, -Long.Term.Gain.Loss)
 ```
-
 
 ```{r groupTrades, include=FALSE}
 ## Use an arbitrary amount of time (t + 6days) to determine if adding to a trade or new trade..
 ## If you buy the stock and buy it again within 6 days, it is considered an "add" and defined as the same trade.
-addDates <- removeFormatting %>% 
+addDates <- cleanedData %>% 
   group_by(Symbol) %>% 
   mutate(
     tradeStartDate = as.Date(min(Date.Acquired)),
@@ -117,7 +117,25 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
   
 ```
 
+```{r getYahooFinanceData, include=FALSE}
+## Add buy and sell price per share
+addSharePrice <- cleanedData %>% 
+  mutate(
+    buyPrice = Cost.Basis/Quantity,
+    sellPrice = Proceeds/Quantity
+  )
 
+## Get just the list of stock symbols
+symbolsTraded <- cleanedData %>% 
+  distinct(Symbol)
+
+## Loop thru the list and retrieve yahoo finance data for each symbol
+for (symbol in symbolsTraded) {
+  getSymbols(symbol, src = "yahoo", from = "2023-01-01")
+}
+
+
+```
 
 
 

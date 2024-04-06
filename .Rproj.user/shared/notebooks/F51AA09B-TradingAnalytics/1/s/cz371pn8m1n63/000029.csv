@@ -1,6 +1,6 @@
 "0","## Use an arbitrary amount of time (t + 6days) to determine if adding to a trade or new trade.."
 "0","## If you buy the stock and buy it again within 6 days, it is considered an ""add"" and defined as the same trade."
-"0","addDates <- removeFormatting %>% "
+"0","addDates <- cleanedData %>% "
 "0","  group_by(Symbol) %>% "
 "0","  mutate("
 "0","    tradeStartDate = as.Date(min(Date.Acquired)),"
