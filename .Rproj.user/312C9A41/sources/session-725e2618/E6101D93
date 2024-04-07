@@ -1,0 +1,28 @@
+{
+    "id": "E6101D93",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1712515108425.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "id": "5f133993bb3f4012b9c90d96eac02be9",
+        "name": "mergedTablesList",
+        "title": "mergedTablesList",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 7307491043415436322,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1712515108425,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -163,8 +163,8 @@ addSharePrice <- cleanedData %>%
 for (i in 1:nrow(addPercentChange)) {
   symbol <- addPercentChange$Symbol[i]
   fromDate <- addPercentChange$tradeStartDate2[i]
-
-  getSymbols(symbol, src = "yahoo", from = fromDate)
+  
+  getSymbols(symbol, src = "yahoo", from = fromDate, to = toDate)
 }
 
 
@@ -173,7 +173,49 @@ for (i in 1:nrow(addPercentChange)) {
 ```
 
 
+```{r, include = FALSE} 
 
+# Custom function to retrieve data for each symbol and merge with original table
+retrieveAndMerge <- function(symbol, fromDate, toDate, addPercentChange) {
+  # Retrieve data for the symbol
+  data <- getSymbols(symbol, src = "yahoo", from = fromDate, to = toDate, auto.assign = FALSE)
+  
+  # Extract dates from Yahoo Finance data
+  yahoo_dates <- index(data)
+  
+  # Create a data frame with dates and the symbol
+  yahoo_data <- data.frame(Date = yahoo_dates, Symbol = symbol, data)
+  
+  # Merge the original table with the yahoo_data based on Date
+  mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
+  
+  return(mergedTable)
+}
+
+# Loop through your table
+for (i in 1:length(addPercentChange$Symbol)) {
+  symbol <- addPercentChange$Symbol[i]
+  fromDate <- addPercentChange$tradeStartDate2[i]
+  toDate <- Sys.Date()  # Assuming you want data up to today's date
+  
+  # Retrieve and merge data for the current symbol
+  mergedTable <- retrieveAndMerge(symbol, fromDate, toDate, addPercentChange)
+  
+  mergedTable <- mergedTable[mergedTable$Symbol == symbol, ]
+
+  
+  # Assign the merged table to a variable with a unique name
+  assign(paste("merged_", symbol, sep = ""), mergedTable)
+}
+
+# Accessing each merged table
+for (symbol in addPercentChange$Symbol) {
+  mergedTableName <- paste("merged_", symbol, sep = "")
+  print(paste("Merged table:", mergedTableName))
+  print(head(get(mergedTableName)))
+}
+
+```
 
 
 
