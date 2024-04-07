@@ -43,7 +43,7 @@ cleanedData <- removeWashSales %>%
   select(Symbol, everything(), -Symbol.CUSIP., -Security.Description, -Long.Term.Gain.Loss)
 ```
 
-```{r groupTrades, include=FALSE}
+```{r grouped trades, include=FALSE}
 ## Use an arbitrary amount of time (t + 6days) to determine if adding to a trade or new trade..
 ## If you buy the stock and buy it again within 6 days, it is considered an "add" and defined as the same trade.
 addDates <- cleanedData %>% 
@@ -159,15 +159,15 @@ addSharePrice <- cleanedData %>%
     sellPrice = Proceeds/Quantity
   )
 
-## Get just the list of stock symbols
-symbolsTraded <- cleanedData %>% 
-  distinct(Symbol)
+## Loop through trades and retrieve yahoo finance data of each symbol starting with day stock was purchased
+for (i in 1:nrow(addPercentChange)) {
+  symbol <- addPercentChange$Symbol[i]
+  fromDate <- addPercentChange$tradeStartDate2[i]
 
-## Loop thru the list and retrieve yahoo finance data for each symbol
-for (symbol in symbolsTraded) 
-  {
-    getSymbols(symbol, src = "yahoo", from = "2023-01-01")
-  }
+  getSymbols(symbol, src = "yahoo", from = fromDate)
+}
+
+
 
 
 ```
