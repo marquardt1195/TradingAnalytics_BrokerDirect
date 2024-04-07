@@ -101,6 +101,40 @@ losingTrades <- addPercentChange %>%
 
 ```
 
+```{r ungrouped trades, include=FALSE}
+ungroupedAddSharePrice <- cleanedData %>% 
+  mutate(
+    ungroupedBuyPrice = Cost.Basis/Quantity,
+    ungroupedSellPrice = Proceeds/Quantity
+  )
+
+ungroupedAddPercentChange <- ungroupedAddSharePrice %>% 
+  mutate(
+    ungroupedPercentChange = ((ungroupedSellPrice-ungroupedBuyPrice)/ungroupedBuyPrice)*100
+  )
+
+ungroupedWinningTrades <- ungroupedAddPercentChange %>% 
+  filter(ungroupedPercentChange > 0)
+
+ungroupedLosingTrades <- ungroupedAddPercentChange %>% 
+  filter(ungroupedPercentChange < 0)
+```
+
+```{r ungrouped results, include = FALSE}
+## Compute total avg gain and avg loss
+ungroupedAvgWinPercent <- round(mean(ungroupedWinningTrades$ungroupedPercentChange), 2)
+ungroupedAvgLossPercent <- round(mean(ungroupedLosingTrades$ungroupedPercentChange), 2)
+
+## Compute Batting Avg %
+ungroupedNumberWinners <- as.numeric(nrow(ungroupedWinningTrades))
+ungroupedNumberLosers <- as.numeric(nrow(ungroupedLosingTrades))
+ungroupedBattingAvg <- round(ungroupedNumberWinners/(sum(ungroupedNumberWinners, ungroupedNumberLosers))*100, 2)
+
+# Compute Win/Loss ratio
+ungroupedWinLossRatio <- abs(round((ungroupedAvgWinPercent/ungroupedAvgLossPercent), 2))
+ungroupedAdjustedWinLossRatio <- round(ungroupedWinLossRatio*(ungroupedBattingAvg/100), 2)
+```
+
 ```{r results, include=FALSE}
 ## Compute total avg gain and avg loss
 avgWinPercent <- round(mean(winningTrades$percentChange), 2)
@@ -130,9 +164,10 @@ symbolsTraded <- cleanedData %>%
   distinct(Symbol)
 
 ## Loop thru the list and retrieve yahoo finance data for each symbol
-for (symbol in symbolsTraded) {
-  getSymbols(symbol, src = "yahoo", from = "2023-01-01")
-}
+for (symbol in symbolsTraded) 
+  {
+    getSymbols(symbol, src = "yahoo", from = "2023-01-01")
+  }
 
 
 ```
