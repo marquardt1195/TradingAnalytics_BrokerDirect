@@ -229,6 +229,22 @@ retrieveAndMerge <- function(symbol, fromDate, addPercentChange) {
   yahoo_data <- data.frame(Date = yahoo_dates, Symbol = symbol, data)
   mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
   
+  column_name <- paste0(symbol, ".Low")
+  
+  # Find the index where the condition is met
+  end_index <- which(yahoo_data[[column_name]] < addPercentChange$fourPercentLoss)[1]
+  
+  # If no such index is found, set end_date to the last date
+  if (is.na(end_index)) {
+    end_date <- max(yahoo_data$Date)
+  } else {
+    end_date <- yahoo_data$Date[end_index]
+  }
+  
+  # Filter the data based on the dynamic end date
+  mergedTable <- mergedTable %>%
+    filter(Date <= end_date)
+  
   return(mergedTable)
 }
 

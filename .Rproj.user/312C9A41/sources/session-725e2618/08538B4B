@@ -3,7 +3,7 @@
     "path": "~/TradingAnalytics/DebugPage.R",
     "project_path": "DebugPage.R",
     "type": "r_source",
-    "hash": "963282548",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1712624432159.0,
@@ -14,16 +14,16 @@
         "source_window_id": "",
         "Source": "Source",
         "cursorPosition": "90,0",
-        "scrollLine": "83",
+        "scrollLine": "84",
         "docOutlineVisible": "1",
-        "docOutlineSize": "217"
+        "docOutlineSize": "101"
     },
     "folds": "",
-    "lastKnownWriteTime": 1712625113,
+    "lastKnownWriteTime": 1712697536,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1712625113358,
+    "last_content_update": 1712697536985,
     "read_only": false,
     "read_only_alternatives": []
 }
