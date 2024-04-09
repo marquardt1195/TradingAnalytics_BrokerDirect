@@ -8,7 +8,6 @@ output: html_document
 ```{r install, include=FALSE}
 ```
 
-
 ```{r library, include=FALSE}
 library(reactable)
 library(dplyr)
@@ -21,7 +20,6 @@ library(quantmod)
 knitr::opts_chunk$set(echo = TRUE)
 rawFidelityData <- read.csv("C:/Users/SUPERUSER/Desktop/Realized_Gain_Loss_Account_Z19598491.csv", na.strings = c("", "NA"))
 ```
-
 
 ```{r cleanData, include=FALSE}
 ## Remove wash sales from datasheet
@@ -88,7 +86,8 @@ addWeightAvg <- addIds %>%
 addPercentChange <- addWeightAvg %>% 
   group_by(Id) %>% 
   mutate(
-    percentChange = ((weightAvgSell - weightAvgBuy)/weightAvgBuy)*100
+    percentChange = ((weightAvgSell - weightAvgBuy)/weightAvgBuy)*100,
+    fourPercentLoss = weightAvgBuy*0.96
   ) %>% 
   distinct(Id, .keep_all = TRUE)
 
@@ -151,7 +150,7 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
   
 ```
 
-```{r getYahooFinanceData, include=FALSE}
+```{r VOID getYahooFinanceData, include=FALSE}
 ## Add buy and sell price per share
 # addSharePrice <- cleanedData %>% 
 #   mutate(
@@ -168,8 +167,7 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
 # }
 ```
 
-
-```{r merged with yahoo all Id's, include = FALSE} 
+```{r VOID, include = FALSE}
 
 # Custom function to retrieve data for each symbol and merge with original table
 # retrieveAndMerge <- function(symbol, fromDate, toDate, addPercentChange, startDates) {
@@ -221,20 +219,14 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
 
 ```
 
-
 ```{r match trades with yahoo data, include = FALSE}
 # Custom function to retrieve data for each symbol and merge with original table
-retrieveAndMerge <- function(symbol, fromDate, toDate, addPercentChange) {
-  # Retrieve data for the symbol
-  data <- getSymbols(symbol, src = "yahoo", from = fromDate, to = toDate, auto.assign = FALSE)
-  
-  # Extract dates from Yahoo Finance data
+retrieveAndMerge <- function(symbol, fromDate, addPercentChange) {
+  data <- getSymbols(symbol, src = "yahoo", from = fromDate, auto.assign = FALSE)
   yahoo_dates <- index(data)
   
   # Create a data frame with dates and the symbol
   yahoo_data <- data.frame(Date = yahoo_dates, Symbol = symbol, data)
-  
-  # Merge the original table with the yahoo_data based on Date
   mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
   
   return(mergedTable)
@@ -254,10 +246,9 @@ for (i in 1:nrow(addPercentChange)) {
   }
   
   fromDate <- startDates[[as.character(Id)]]
-  toDate <- Sys.Date()  # Assuming you want data up to today's date
   
   # Retrieve and merge data for the current symbol
-  mergedTable <- retrieveAndMerge(symbol, fromDate, toDate, addPercentChange[i, , drop = FALSE])
+  mergedTable <- retrieveAndMerge(symbol, fromDate, addPercentChange[i, , drop = FALSE])
   
   # Assign the merged table to a variable with a unique name
   assign(paste("merged_", symbol, "_Id_", Id, sep = ""), mergedTable)
@@ -281,3 +272,16 @@ for (symbol in addPercentChange$Symbol) {
 
 ```
 
+```{r find avg upside, include=FALSE}
+end_date <- as.Date(Sys.Date())
+
+for (i in 1:nrow(merged_MRVL_Id_35)) {
+  if (merged_MRVL_Id_35$MRVL.Low[i] < merged_MRVL_Id_35$fourPercentLoss[i]) {
+    end_date <- merged_MRVL_Id_35$Date[i]
+    break
+  }
+}
+
+trade35Final <- merged_MRVL_Id_35 %>% 
+  filter(Date <= end_date)
+```
