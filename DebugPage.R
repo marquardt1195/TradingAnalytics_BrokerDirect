@@ -88,7 +88,8 @@ addPercentChange <- addWeightAvg %>%
 
 
 
-retrieveAndMerge <- function(symbol, fromDate, addPercentChange) {
+## Function to merge trades with yahoo finance
+mergeTradesWithYahoo <- function(symbol, fromDate, addPercentChange) {
   data <- getSymbols(symbol, src = "yahoo", from = fromDate, auto.assign = FALSE)
   yahoo_dates <- index(data)
   
@@ -97,8 +98,6 @@ retrieveAndMerge <- function(symbol, fromDate, addPercentChange) {
   mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
   
   column_name <- paste0(symbol, ".Low")
-  
-  # Find the index where the condition is met
   end_index <- which(yahoo_data[[column_name]] < addPercentChange$fourPercentLoss)[1]
   
   # If no such index is found, set end_date to the last date
@@ -115,15 +114,8 @@ retrieveAndMerge <- function(symbol, fromDate, addPercentChange) {
   return(mergedTable)
 }
 
-
-
-
-
-
-# Initialize a list to store start dates for each Id
 startDates <- list()
 
-# Loop through your table
 for (i in 1:nrow(addPercentChange)) {
   symbol <- addPercentChange$Symbol[i]
   Id <- addPercentChange$Id[i]
@@ -136,10 +128,41 @@ for (i in 1:nrow(addPercentChange)) {
   fromDate <- startDates[[as.character(Id)]]
   
   # Retrieve and merge data for the current symbol
-  mergedTable <- retrieveAndMerge(symbol, fromDate, addPercentChange[i, , drop = FALSE])
+  mergedTable <- mergeTradesWithYahoo(symbol, fromDate, addPercentChange[i, , drop = FALSE])
   
   # Assign the merged table to a variable with a unique name
   assign(paste("merged_", symbol, "_Id_", Id, sep = ""), mergedTable)
+  
+  ## Add to results table
+  max_upside_name <- grep(paste0(symbol, ".High"), names(mergedTable), value = TRUE)
+  
+  max_upside <- max(mergedTable[[max_upside_name]])
+  
+  stop_loss <- addPercentChange$fourPercentLoss[i]
+  
+  max_upside_index <- which.max(mergedTable[[max_upside_name]])
+  
+  number_days_reached_max <- max_upside_index
+  number_days_until_stopped <- length(mergedTable$Date)
+  
+  max_upside_percent <- ((max_upside - stop_loss)/stop_loss)*100
+  
+  # Create a new results table with the calculated value
+  resultsTable <- data.frame(
+    Id = Id, 
+    Symbol = symbol, 
+    MaxPrice = max_upside, 
+    StopLoss = stop_loss, 
+    DaysUntilStopped = number_days_until_stopped, 
+    DaysReachedMax = number_days_reached_max,
+    MaxUpside = max_upside_percent
+  )
+  
+  # Store the results table
+  resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+  assign(resultsTableName, resultsTable)
+  print(paste("Created results table:", resultsTableName))
+  
   
   # Update the start date if the next Id is different
   if (i < nrow(addPercentChange) && addPercentChange$Id[i+1] != Id) {
@@ -148,13 +171,59 @@ for (i in 1:nrow(addPercentChange)) {
   }
 }
 
-
-# Accessing each merged table
+# Accessing each merged table and results table
 for (symbol in addPercentChange$Symbol) {
   for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
     mergedTableName <- paste("merged_", symbol, "_Id_", Id, sep = "")
+    resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+    
     print(paste("Merged table:", mergedTableName))
     print(head(get(mergedTableName)))
+    
+    print(paste("Results table:", resultsTableName))
+    print(head(get(resultsTableName)))
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+max_upside_vector <- c()
+
+# Accessing each merged table and results table
+for (symbol in addPercentChange$Symbol) {
+  for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
+    resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+    
+    # Get the results table
+    resultsTable <- get(resultsTableName)
+    
+    # Add the max_upside_percent to the vector
+    max_upside_vector <- c(max_upside_vector, resultsTable$MaxUpside)
+  }
+}
+
+# Calculate the mean max_upside_percent
+mean_max_upside <- mean(max_upside_vector)
+
+# Create a new data frame with the mean max_upside_percent
+mean_max_upside_df <- data.frame(MeanMaxUpside = mean_max_upside)
+
+# Print the data frame with mean max_upside_percent
+print(mean_max_upside_df)
+
+
+
+
+
+
 

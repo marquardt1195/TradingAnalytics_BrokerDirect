@@ -150,7 +150,7 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
   
 ```
 
-```{r merge with yahoo, include = FALSE}
+```{r merge with yahoo OLD, include = FALSE}
 ## Function to merge trades with yahoo finance
 mergeTradesWithYahoo <- function(symbol, fromDate, addPercentChange) {
   data <- getSymbols(symbol, src = "yahoo", from = fromDate, auto.assign = FALSE)
@@ -292,6 +292,8 @@ for (i in 1:nrow(addPercentChange)) {
   # Store the results table
   resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
   assign(resultsTableName, resultsTable)
+  print(paste("Created results table:", resultsTableName))
+
   
   # Update the start date if the next Id is different
   if (i < nrow(addPercentChange) && addPercentChange$Id[i+1] != Id) {
@@ -315,3 +317,39 @@ for (symbol in addPercentChange$Symbol) {
 }
 
 ```
+
+
+
+```{r get average results, include= FALSE}
+max_upside_vector <- c()
+
+# Accessing each merged table and results table
+for (symbol in addPercentChange$Symbol) {
+  for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
+    resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+    
+    # Get the results table
+    resultsTable <- get(resultsTableName)
+    
+    # Add the max_upside_percent to the vector
+    max_upside_vector <- c(max_upside_vector, resultsTable$MaxUpside)
+  }
+}
+
+# Calculate the mean max_upside_percent
+mean_max_upside <- mean(max_upside_vector)
+
+# Create a new data frame with the mean max_upside_percent
+mean_max_upside_df <- data.frame(MeanMaxUpside = mean_max_upside)
+
+# Print the data frame with mean max_upside_percent
+print(mean_max_upside_df)
+
+
+
+```
+
+
+
+
+

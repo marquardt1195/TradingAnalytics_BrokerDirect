@@ -1,5 +1,36 @@
 {
     "debugBreakpointsState": {
-        "breakpoints": []
+        "breakpoints": [
+            {
+                "id": 11,
+                "path": "~/TradingAnalytics/DebugPage.R",
+                "line_number": 193,
+                "function_steps": "",
+                "function_name": "calculateMean",
+                "state": 2,
+                "editor_state": 2,
+                "editor_line_number": 193,
+                "is_pending_debug_completion": false,
+                "needs_updated_steps": false,
+                "type": 0,
+                "is_package_breakpoint": false,
+                "package_name": ""
+            },
+            {
+                "id": 12,
+                "path": "~/TradingAnalytics/DebugPage.R",
+                "line_number": 194,
+                "function_steps": "",
+                "function_name": "calculateMean",
+                "state": 2,
+                "editor_state": 2,
+                "editor_line_number": 194,
+                "is_pending_debug_completion": false,
+                "needs_updated_steps": false,
+                "type": 0,
+                "is_package_breakpoint": false,
+                "package_name": ""
+            }
+        ]
     }
 }
