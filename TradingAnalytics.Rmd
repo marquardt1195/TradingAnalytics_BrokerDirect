@@ -8,7 +8,6 @@ output: html_document
 ```{r install, include=FALSE}
 ```
 
-
 ```{r library, include=FALSE}
 library(reactable)
 library(dplyr)
@@ -21,7 +20,6 @@ library(quantmod)
 knitr::opts_chunk$set(echo = TRUE)
 rawFidelityData <- read.csv("C:/Users/SUPERUSER/Desktop/Realized_Gain_Loss_Account_Z19598491.csv", na.strings = c("", "NA"))
 ```
-
 
 ```{r cleanData, include=FALSE}
 ## Remove wash sales from datasheet
@@ -43,14 +41,14 @@ cleanedData <- removeWashSales %>%
   select(Symbol, everything(), -Symbol.CUSIP., -Security.Description, -Long.Term.Gain.Loss)
 ```
 
-```{r groupTrades, include=FALSE}
+```{r grouped trades, include=FALSE}
 ## Use an arbitrary amount of time (t + 6days) to determine if adding to a trade or new trade..
 ## If you buy the stock and buy it again within 6 days, it is considered an "add" and defined as the same trade.
 addDates <- cleanedData %>% 
   group_by(Symbol) %>% 
   mutate(
     tradeStartDate = as.Date(min(Date.Acquired)),
-    addWindow = floor_date(tradeStartDate, "day") + days(6),
+    addWindow = floor_date(tradeStartDate, "day") + days(10),
     tradeEndDate = max(Date.Sold)
   ) %>% 
   select(Symbol, Quantity, Date.Acquired, Date.Sold, everything()) 
@@ -58,7 +56,7 @@ addDates <- cleanedData %>%
 ## Use dates to group trades
 addStartDate <- addDates %>% 
   mutate(
-    transactionType = ifelse(Date.Acquired <= addWindow & Date.Acquired + days(6) >= addWindow, "same_trade", "new_trade"),
+    transactionType = ifelse(Date.Acquired <= addWindow & Date.Acquired + days(10) >= addWindow, "same_trade", "new_trade"),
     tradeStartDate2 = as.Date(ifelse(transactionType == "new_trade", Date.Acquired, tradeStartDate)),
     buyPrice = Cost.Basis/Quantity,
     sellPrice = Proceeds/Quantity
@@ -71,7 +69,9 @@ addStartDate <- addDates %>%
 ## Add Id's to grouped trades
 addIds <- addStartDate %>% 
   mutate(
-    Id = cumsum(c(1, diff(data.table::rleid(tradeStartDate2)) != 0))
+    symbol_change = lag(Symbol, default = "") != Symbol,
+    date_change = c(0, diff(data.table::rleid(tradeStartDate2))) != 0,
+    Id = cumsum(1 * (symbol_change | date_change))
   ) %>% 
   select(Id, everything())
 
@@ -88,7 +88,8 @@ addWeightAvg <- addIds %>%
 addPercentChange <- addWeightAvg %>% 
   group_by(Id) %>% 
   mutate(
-    percentChange = ((weightAvgSell - weightAvgBuy)/weightAvgBuy)*100
+    percentChange = ((weightAvgSell - weightAvgBuy)/weightAvgBuy)*100,
+    fourPercentLoss = weightAvgBuy*0.96
   ) %>% 
   distinct(Id, .keep_all = TRUE)
 
@@ -99,6 +100,40 @@ winningTrades <- addPercentChange %>%
 losingTrades <- addPercentChange %>%
   filter(percentChange < 0)
 
+```
+
+```{r ungrouped trades, include=FALSE}
+ungroupedAddSharePrice <- cleanedData %>% 
+  mutate(
+    ungroupedBuyPrice = Cost.Basis/Quantity,
+    ungroupedSellPrice = Proceeds/Quantity
+  )
+
+ungroupedAddPercentChange <- ungroupedAddSharePrice %>% 
+  mutate(
+    ungroupedPercentChange = ((ungroupedSellPrice-ungroupedBuyPrice)/ungroupedBuyPrice)*100
+  )
+
+winningTrades <- ungroupedAddPercentChange %>% 
+  filter(ungroupedPercentChange > 0)
+
+losingTrades <- ungroupedAddPercentChange %>% 
+  filter(ungroupedPercentChange < 0)
+```
+
+```{r ungrouped results, include = FALSE}
+## Compute total avg gain and avg loss
+avgWinPercent <- round(mean(winningTrades$ungroupedPercentChange), 2)
+avgLossPercent <- round(mean(losingTrades$ungroupedPercentChange), 2)
+
+## Compute Batting Avg %
+numberWinners <- as.numeric(nrow(winningTrades))
+numberLosers <- as.numeric(nrow(losingTrades))
+battingAvg <- round(numberWinners/(sum(numberWinners, numberLosers))*100, 2)
+
+# Compute Win/Loss ratio
+winLossRatio <- abs(round((avgWinPercent/avgLossPercent), 2))
+adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
 ```
 
 ```{r results, include=FALSE}
@@ -117,26 +152,196 @@ adjustedWinLossRatio <- round(winLossRatio*(battingAvg/100), 2)
   
 ```
 
-```{r getYahooFinanceData, include=FALSE}
-## Add buy and sell price per share
-addSharePrice <- cleanedData %>% 
-  mutate(
-    buyPrice = Cost.Basis/Quantity,
-    sellPrice = Proceeds/Quantity
-  )
+```{r merge with yahoo OLD, include = FALSE}
+## Function to merge trades with yahoo finance
+mergeTradesWithYahoo <- function(symbol, fromDate, addPercentChange) {
+  data <- getSymbols(symbol, src = "yahoo", from = fromDate, auto.assign = FALSE)
+  yahoo_dates <- index(data)
+  
+  # Create a data frame with dates and the symbol
+  yahoo_data <- data.frame(Date = yahoo_dates, Symbol = symbol, data)
+  mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
+  
+  column_name <- paste0(symbol, ".Low")
+  end_index <- which(yahoo_data[[column_name]] < addPercentChange$fourPercentLoss)[1]
+  
+  # If no such index is found, set end_date to the last date
+  if (is.na(end_index)) {
+    end_date <- max(yahoo_data$Date)
+  } else {
+    end_date <- yahoo_data$Date[end_index]
+  }
+  
+  # Filter the data based on the dynamic end date
+  mergedTable <- mergedTable %>%
+    filter(Date <= end_date)
+  
+  return(mergedTable)
+}
 
-## Get just the list of stock symbols
-symbolsTraded <- cleanedData %>% 
-  distinct(Symbol)
+startDates <- list()
 
-## Loop thru the list and retrieve yahoo finance data for each symbol
-for (symbol in symbolsTraded) {
-  getSymbols(symbol, src = "yahoo", from = "2023-01-01")
+for (i in 1:nrow(addPercentChange)) {
+  symbol <- addPercentChange$Symbol[i]
+  Id <- addPercentChange$Id[i]
+  
+  # Check if start date for this Id exists, if not, set it
+  if (!(as.character(Id) %in% names(startDates))) {
+    startDates[[as.character(Id)]] <- addPercentChange$tradeStartDate2[i]
+  }
+  
+  fromDate <- startDates[[as.character(Id)]]
+  
+  # Retrieve and merge data for the current symbol
+  mergedTable <- mergeTradesWithYahoo(symbol, fromDate, addPercentChange[i, , drop = FALSE])
+  
+  # Assign the merged table to a variable with a unique name
+  assign(paste("merged_", symbol, "_Id_", Id, sep = ""), mergedTable)
+  
+  # Update the start date if the next Id is different
+  if (i < nrow(addPercentChange) && addPercentChange$Id[i+1] != Id) {
+    nextId <- addPercentChange$Id[i+1]
+    startDates[[as.character(nextId)]] <- addPercentChange$tradeStartDate2[i+1]
+  }
+}
+
+# Accessing each merged table
+for (symbol in addPercentChange$Symbol) {
+  for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
+    mergedTableName <- paste("merged_", symbol, "_Id_", Id, sep = "")
+    print(paste("Merged table:", mergedTableName))
+    print(head(get(mergedTableName)))
+  }
 }
 
 
 ```
 
+
+
+
+```{r merge with yahoo and results, include=FALSE}
+## Function to merge trades with yahoo finance
+mergeTradesWithYahoo <- function(symbol, fromDate, addPercentChange) {
+  data <- getSymbols(symbol, src = "yahoo", from = fromDate, auto.assign = FALSE)
+  yahoo_dates <- index(data)
+  
+  # Create a data frame with dates and the symbol
+  yahoo_data <- data.frame(Date = yahoo_dates, Symbol = symbol, data)
+  mergedTable <- merge(addPercentChange, yahoo_data, by = "Symbol", all.x = TRUE)
+  
+  column_name <- paste0(symbol, ".Low")
+  end_index <- which(yahoo_data[[column_name]] < addPercentChange$fourPercentLoss)[1]
+  
+  # If no such index is found, set end_date to the last date
+  if (is.na(end_index)) {
+    end_date <- max(yahoo_data$Date)
+  } else {
+    end_date <- yahoo_data$Date[end_index]
+  }
+  
+  # Filter the data based on the dynamic end date
+  mergedTable <- mergedTable %>%
+    filter(Date <= end_date)
+  
+  return(mergedTable)
+}
+
+startDates <- list()
+
+for (i in 1:nrow(addPercentChange)) {
+  symbol <- addPercentChange$Symbol[i]
+  Id <- addPercentChange$Id[i]
+  
+  # Check if start date for this Id exists, if not, set it
+  if (!(as.character(Id) %in% names(startDates))) {
+    startDates[[as.character(Id)]] <- addPercentChange$tradeStartDate2[i]
+  }
+  
+  fromDate <- startDates[[as.character(Id)]]
+  
+  # Retrieve and merge data for the current symbol
+  mergedTable <- mergeTradesWithYahoo(symbol, fromDate, addPercentChange[i, , drop = FALSE])
+  
+  # Assign the merged table to a variable with a unique name
+  assign(paste("merged_", symbol, "_Id_", Id, sep = ""), mergedTable)
+  
+  ## Add to results table
+  max_upside_name <- grep(paste0(symbol, ".High"), names(mergedTable), value = TRUE)
+  
+  max_upside <- max(mergedTable[[max_upside_name]])
+  
+  stop_loss <- addPercentChange$fourPercentLoss[i]
+  
+  max_upside_index <- which.max(mergedTable[[max_upside_name]])
+  
+  number_days_reached_max <- max_upside_index
+  number_days_until_stopped <- length(mergedTable$Date)
+  
+  max_upside_percent <- ((max_upside - stop_loss)/stop_loss)*100
+  
+  # Create a new results table with the calculated value
+  resultsTable <- data.frame(
+    Id = Id, 
+    Symbol = symbol, 
+    MaxPrice = max_upside, 
+    StopLoss = stop_loss, 
+    DaysUntilStopped = number_days_until_stopped, 
+    DaysReachedMax = number_days_reached_max,
+    MaxUpside = max_upside_percent
+    )
+  
+  # Store the results table
+  resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+  assign(resultsTableName, resultsTable)
+  print(paste("Created results table:", resultsTableName))
+
+  
+  # Update the start date if the next Id is different
+  if (i < nrow(addPercentChange) && addPercentChange$Id[i+1] != Id) {
+    nextId <- addPercentChange$Id[i+1]
+    startDates[[as.character(nextId)]] <- addPercentChange$tradeStartDate2[i+1]
+  }
+}
+
+# Accessing each merged table and results table
+for (symbol in addPercentChange$Symbol) {
+  for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
+    mergedTableName <- paste("merged_", symbol, "_Id_", Id, sep = "")
+    resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+    
+    print(paste("Merged table:", mergedTableName))
+    print(head(get(mergedTableName)))
+    
+    print(paste("Results table:", resultsTableName))
+    print(head(get(resultsTableName)))
+  }
+}
+
+```
+
+
+
+```{r get average results, include= FALSE}
+## 
+max_upside_vector <- c()
+unique_pairs <- unique(addPercentChange[, c("Symbol", "Id")])
+
+# Accessing each merged table and results table
+for (i in 1:nrow(unique_pairs)) {
+  symbol <- unique_pairs$Symbol[i]
+  Id <- unique_pairs$Id[i]
+  
+  resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+  resultsTable <- get(resultsTableName)
+  max_upside_vector <- c(max_upside_vector, resultsTable$MaxUpside[1])
+}
+
+mean_max_upside <- mean(max_upside_vector)
+mean_max_upside_df <- data.frame(MeanMaxUpside = mean_max_upside)
+
+
+```
 
 
 
