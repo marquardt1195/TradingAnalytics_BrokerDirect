@@ -48,7 +48,7 @@ addDates <- cleanedData %>%
   group_by(Symbol) %>% 
   mutate(
     tradeStartDate = as.Date(min(Date.Acquired)),
-    addWindow = floor_date(tradeStartDate, "day") + days(6),
+    addWindow = floor_date(tradeStartDate, "day") + days(10),
     tradeEndDate = max(Date.Sold)
   ) %>% 
   select(Symbol, Quantity, Date.Acquired, Date.Sold, everything()) 
@@ -56,7 +56,7 @@ addDates <- cleanedData %>%
 ## Use dates to group trades
 addStartDate <- addDates %>% 
   mutate(
-    transactionType = ifelse(Date.Acquired <= addWindow & Date.Acquired + days(6) >= addWindow, "same_trade", "new_trade"),
+    transactionType = ifelse(Date.Acquired <= addWindow & Date.Acquired + days(10) >= addWindow, "same_trade", "new_trade"),
     tradeStartDate2 = as.Date(ifelse(transactionType == "new_trade", Date.Acquired, tradeStartDate)),
     buyPrice = Cost.Basis/Quantity,
     sellPrice = Proceeds/Quantity
@@ -69,7 +69,9 @@ addStartDate <- addDates %>%
 ## Add Id's to grouped trades
 addIds <- addStartDate %>% 
   mutate(
-    Id = cumsum(c(1, diff(data.table::rleid(tradeStartDate2)) != 0))
+    symbol_change = lag(Symbol, default = "") != Symbol,
+    date_change = c(0, diff(data.table::rleid(tradeStartDate2))) != 0,
+    Id = cumsum(1 * (symbol_change | date_change))
   ) %>% 
   select(Id, everything())
 
@@ -321,30 +323,22 @@ for (symbol in addPercentChange$Symbol) {
 
 
 ```{r get average results, include= FALSE}
+## 
 max_upside_vector <- c()
+unique_pairs <- unique(addPercentChange[, c("Symbol", "Id")])
 
 # Accessing each merged table and results table
-for (symbol in addPercentChange$Symbol) {
-  for (Id in unique(addPercentChange$Id[addPercentChange$Symbol == symbol])) {
-    resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
-    
-    # Get the results table
-    resultsTable <- get(resultsTableName)
-    
-    # Add the max_upside_percent to the vector
-    max_upside_vector <- c(max_upside_vector, resultsTable$MaxUpside)
-  }
+for (i in 1:nrow(unique_pairs)) {
+  symbol <- unique_pairs$Symbol[i]
+  Id <- unique_pairs$Id[i]
+  
+  resultsTableName <- paste("results_", symbol, "_Id_", Id, sep = "")
+  resultsTable <- get(resultsTableName)
+  max_upside_vector <- c(max_upside_vector, resultsTable$MaxUpside[1])
 }
 
-# Calculate the mean max_upside_percent
 mean_max_upside <- mean(max_upside_vector)
-
-# Create a new data frame with the mean max_upside_percent
 mean_max_upside_df <- data.frame(MeanMaxUpside = mean_max_upside)
-
-# Print the data frame with mean max_upside_percent
-print(mean_max_upside_df)
-
 
 
 ```
